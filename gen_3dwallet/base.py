@@ -22,7 +22,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Generate an STL file of a 3D-printable bitcoin, litecoin, dogecoin, or other type of coin.', formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('-ve', '--version', dest='versionByte', type=int, default=0, help='Version Bit of the address (for other altcoins).\nBitcoin: 0 (Default)\n Litecoin: 48\n Dogecoin: 30')
     parser.add_argument('-ct', '--coin-title', dest='coinTitle', type=str, default="Bitcoin", help='Title of the coin, used for design purposes \n(Default: Bitcoin)')
-    parser.add_argument('-ls', '--layout-style', dest='layoutStyle', type=int, default=1, help="Layout style of the wallet.\n1) Address on the Front, Private Key on the Back (Default)\n2) Private Key Only\n3) Address Only (don't forget to export the Private Keys after)")
+    parser.add_argument('-ls', '--layout-style', dest='layoutStyle', type=int, default=1, help="Layout style of the wallet.\n1) Address on the Front, Private Key on the Back (Default)\n2) Private Key Only\n3) Address Only (don't forget to export the Private Keys after)\n4) Same as 1 but with breakaway protector.")
     parser.add_argument('-wi', '--width', dest='walletWidth', type=float, default=54.0, help='The width of the wallet in mm. The length is calculated automatically. Default option is approximately standard credit card legnth and width. \n(Default: 54.0)')
     parser.add_argument('-he', '--height', dest='walletHeight', type=float, default=8.0, help='The height of the wallet in mm. \n(Default: 8)')
     parser.add_argument('-bo', '--black-offset', dest='blackOffset', type=int, default=-30, help='The percentage of the height that the black part of the QR code, and the text, will be raised or lowered by.\nNegative number for lowered, positive for raised.  Option must be greater than -90. \n(Default: -20)')
@@ -41,6 +41,10 @@ def parse_args():
 
 def main():
     args = parse_args()
+
+    if  args.layoutStyle == 4 and args.blackOffset>0:
+        print("Unable to generate a breakaway protected wallet with inverted depth")
+        sys.exit()
 
     # Set DEBUG variable for testing purposes (changing styling)
     # If true, prints the SCAD to the terminal and then breaks after first generation
@@ -77,7 +81,7 @@ def main():
     # Validate other args and set some constants
     walletWidth = args.walletWidth
     walletHeight = args.walletHeight
-    if args.layoutStyle == 1 or args.layoutStyle == 2 or args.layoutStyle == 3:
+    if args.layoutStyle == 1 or args.layoutStyle == 2 or args.layoutStyle == 3 or args.layoutStyle == 4:
         walletLength = walletWidth*1.6 # Approximately the same ratio as a credit card
     else:
         print("Please choose a valid layout style option.")
@@ -124,6 +128,9 @@ def main():
         mainCube = "cube([" + str(walletLength) + "," + str(walletWidth) + "," + str(walletHeight) + "]);"
     mainCube += "\n\n"
 
+    if args.layoutStyle == 4:
+        # TODO: Add protector for layout style 4
+
     # Init a variable to keep all the additive/subtractive parts
     finalParts = []
 
@@ -169,13 +176,13 @@ def main():
         # Translate the title to where it goes
         bigTitleFinal = "translate([(1/17)*length,(14/17)*width,0]){resize([(15/17)*length,0,0],auto=[true,true,false]){bigTitleUnion}}".replace('length',str(walletLength)).replace('width',str(walletWidth)).replace('bigTitleUnion',bigTitleUnion)
         finalParts.append(bigTitleFinal+"\n\n")
-        if args.layoutStyle == 1:
+        if args.layoutStyle == 1 or args.layoutStyle == 4:
             # Need to copy it on to the backside as well - rotate then move it, and then create a union of the two titles (front and back)
             bigTitle2 = "translate([length,0,height]){rotate(180,v=[0,1,0]){bigTitleFinal}}".replace('length',str(walletLength)).replace('height',str(walletHeight)).replace('bigTitleFinal',bigTitleFinal).replace('translateHeight',str(translateHeight))
             finalParts.append(bigTitle2+"\n\n")
         
         # Draw the word "Address" on the front, and draw on the actual address
-        if args.layoutStyle == 1 or args.layoutStyle == 3:
+        if args.layoutStyle == 1 or args.layoutStyle == 3 or args.layoutStyle == 4:
             # Draw the address on the front
             addressParts = []
 
@@ -230,7 +237,7 @@ def main():
             finalParts.extend(addressParts)
 
         # Draw all the things having to do with the private key
-        if args.layoutStyle == 1 or args.layoutStyle == 2:
+        if args.layoutStyle == 1 or args.layoutStyle == 2 or args.layoutStyle == 4:
             privkeyParts = []
 
             # Create the privkey title union and size/move it
@@ -296,7 +303,7 @@ def main():
             if args.layoutStyle == 2:
                 # Just add it all to the finalParts
                 finalParts.extend(privkeyParts)
-            elif args.layoutStyle == 1:
+            elif args.layoutStyle == 1 or args.layoutStyle == 4:
                 # Rotate it all and then add it to the finalParts
                 privkeyPartsNew = []
                 for part in privkeyParts:
