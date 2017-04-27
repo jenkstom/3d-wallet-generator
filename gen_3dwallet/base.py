@@ -122,14 +122,35 @@ def main():
     masterSCAD += "\n"
 
     # Draw the main prism
+
+
+    mainCube = ""
+    adjHeight = walletHeight
+    if args.layoutStyle == 4:
+        adjHeight += 2
+        mainCube ="translate([0,0,-2]) "
+
     if args.roundCorners:
-        mainCube = "roundCornersCube(" + str(walletLength) + "," + str(walletWidth) + "," + str(walletHeight) + ");"
+        mainCube += "roundCornersCube(" + str(walletLength) + "," + str(walletWidth) + "," + str(adjHeight) + ");"
     else:
-        mainCube = "cube([" + str(walletLength) + "," + str(walletWidth) + "," + str(walletHeight) + "]);"
+        mainCube += "cube([" + str(walletLength) + "," + str(walletWidth) + "," + str(adjHeight) + "]);"
     mainCube += "\n\n"
 
     if args.layoutStyle == 4:
-        # TODO: Add protector for layout style 4
+        # Create a slice in the wallet with breakaway stubs
+        mainCube += """
+        difference ()
+          {
+            cube([86.4,54.0,0.2]);
+            for (x=[0:20])
+            {
+                translate([((x+2)/24)*86.4,(1/20)*54.0,-1]) cube([86.4/200,54.0/100,2]);
+                translate([((x+2)/24)*86.4,(19/20)*54.0,-1]) cube([86.4/200,54.0/100,2]);
+                translate([(1/30)*86.4,((x+2)/24)*54.0,-1]) cube([86.4/200,54.0/100,2]);
+                translate([(29/30)*86.4,((x+2)/24)*54.0,-1]) cube([86.4/200,54.0/100,2]);
+            }
+          }   
+        """
 
     # Init a variable to keep all the additive/subtractive parts
     finalParts = []
